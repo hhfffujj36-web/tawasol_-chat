@@ -1,6 +1,8 @@
 name: Build Android APK
+
 on:
-  workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
   build:
@@ -9,35 +11,39 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '24'
-        
+
     - name: Install dependencies
       run: npm install
-      
+
     - name: Build Web App
       run: npm run build
-      
-    - name: Setup Capacitor
-      run: npx cap init tawasol com.tawasol.app --web-dir=build --skip-prompts
-      
-    - name: Add Android Platform
-      run: npx cap add android
-      
-    - name: Sync to Android
-      run: npx cap sync android
-      
-    - name: Give permission
-      run: chmod +x android/gradlew
-      
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Create Capacitor App
+      run: |
+        npm install -g @capacitor/cli
+        npx cap init "Tawasal" "com.tawasol.app" --web-dir=dist --skip-prompts
+        npx cap add android
+        npx cap copy
+
     - name: Build APK
       run: cd android && ./gradlew assembleDebug
-      
+
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
+        name: tawasal-apk
         path: android/app/build/outputs/apk/debug/app-debug.apk
