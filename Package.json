@@ -5,39 +5,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm install
-      
-    - name: Build Web App
-      run: npm run build
-    - name: Setup Capacitor
-      run: npx cap init tawasol com.tawasol.app --web-dir=build --skip-prompts
-      
-    - name: Add Android Platform
-      run: npx cap add android
-      
-    - name: Sync to Android
-      run: npx cap sync android
-      
-    - name: Give permission
-      run: chmod +x android/gradlew
-      
-    - name: Build APK
-      run: cd android && ./gradlew assembleDebug
-      
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-debug
-        path: android/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm install
+      - run: npm run build
+      - run: npx cap init tawasol com.tawasol.app --web-dir=build --skip-prompts
+      - run: npx cap add android
+      - run: npx cap sync android
+      - run: chmod +x android/gradlew
+      - run: cd android && ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
