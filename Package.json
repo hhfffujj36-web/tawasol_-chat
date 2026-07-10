@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build APK
 on:
   workflow_dispatch:
 
@@ -6,19 +6,31 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: تحميل الكود
+        uses: actions/checkout@v4
+
+      - name: تنصيب Node
+        uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'npm'
-      - run: npm install
-      - run: npm run build
-      - run: npx cap init tawasol com.tawasol.app --web-dir=build --skip-prompts
-      - run: npx cap add android
-      - run: npx cap sync android
-      - run: chmod +x android/gradlew
-      - run: cd android && ./gradlew assembleDebug
-      - uses: actions/upload-artifact@v4
+
+      - name: تنصيب المكتبات
+        run: npm install
+
+      - name: بناء الموقع
+        run: npm run build
+
+      - name: اضافة الاندرويد
+        run: npx cap add android
+
+      - name: مزامنة
+        run: npx cap sync
+
+      - name: بناء الAPK
+        run: cd android && ./gradlew assembleDebug
+
+      - name: رفع الملف
+        uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
