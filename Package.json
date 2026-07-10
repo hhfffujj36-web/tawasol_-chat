@@ -21,7 +21,6 @@ jobs:
       
     - name: Build Web App
       run: npm run build
-      
     - name: Setup Capacitor
       run: npx cap init tawasol com.tawasol.app --web-dir=build --skip-prompts
       
