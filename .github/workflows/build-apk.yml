@@ -13,18 +13,22 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '24'
         
-    - name: Setup Capacitor
-      run: npx cap init tawasol com.tawasol.app --web-dir=www --skip-prompts
+    - name: Install dependencies
+      run: npm install
       
-    - name: Create www folder
-      run: |
-        mkdir -p www
-        echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>تواصل</title></head><body style="text-align:center;padding:50px;font-family:sans-serif;"><h1>مرحبا في تطبيق تواصل</h1><p>التطبيق جاهز</p></body></html>' > www/index.html
-        
+    - name: Build Web App
+      run: npm run build
+      
+    - name: Setup Capacitor
+      run: npx cap init tawasol com.tawasol.app --web-dir=build --skip-prompts
+      
     - name: Add Android Platform
       run: npx cap add android
+      
+    - name: Sync to Android
+      run: npx cap sync android
       
     - name: Give permission
       run: chmod +x android/gradlew
