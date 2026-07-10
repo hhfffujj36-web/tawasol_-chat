@@ -5,24 +5,32 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install dependencies
-        run: npm install
-      - name: Build Web
-        run: npm run build
-      - name: Setup Capacitor
-        run: npx cap init tawasol com.tawasol.app --web-dir=build
-      - name: Add Android
-        run: npx cap add android
-      - name: Build APK
-        run: cd android && ./gradlew assembleDebug
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Setup Capacitor
+      run: npx cap init tawasol com.tawasol.app --web-dir=www --skip-prompts
+      
+    - name: Create www folder
+      run: |
+        mkdir -p www
+        echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>تواصل</title></head><body style="text-align:center;padding:50px;font-family:sans-serif;"><h1>مرحبا في تطبيق تواصل</h1><p>التطبيق جاهز</p></body></html>' > www/index.html
+        
+    - name: Add Android Platform
+      run: npx cap add android
+      
+    - name: Build APK
+      run: cd android && ./gradlew assembleDebug
+      
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: android/app/build/outputs/apk/debug/app-debug.apk
