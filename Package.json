@@ -1,37 +1,46 @@
-name: Build Android APK  # اسم المهمة
-on:
-  workflow_dispatch:     # زر التشغيل اليدوي
+import { useState } from 'react'
+import './App.css'
 
-jobs:
-  build:
-    runs-on: ubuntu-latest  # يخدم على سيرفر لينكس
+function App() {
+  const [messages, setMessages] = useState([])
+  const [input, setInput] = useState('')
+
+  const sendMessage = () => {
+    if(input.trim() === '') return
+    setMessages([...messages, {text: input, me: true}])
+    setInput('')
     
-    steps:
-    - name: تحميل الكود
-      uses: actions/checkout@v4  # يجيب الكود من GitHub
+    // رد وهمي باش تشوفه يشتغل
+    setTimeout(() => {
+      setMessages(prev => [...prev, {text: 'مرحبا بيك في تواصل 💬', me: false}])
+    }, 500)
+  }
+
+  return (
+    <div className="app">
+      <header>
+        <h1>💬 تواصل</h1>
+      </header>
       
-    - name: تنصيب Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '24'  # اصدار النود
-        
-    - name: تنصيب المكتبات
-      run: npm install  # ينزل node_modules
-      
-    - name: بناء الموقع
-      run: npm run build  # يبني مجلد build
-      
-    - name: اضافة الاندرويد
-      run: npx cap add android  # يضيف منصة الاندرويد
-      
-    - name: مزامنة الكود
-      run: npx cap sync  # ينقل ملفات build للاندرويد
-      
-    - name: بناء ملف APK
-      run: cd android && ./gradlew assembleDebug  # يبني الAPK
-      
-    - name: رفع ملف APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-debug  # اسم الملف اللي بينزل
-        path: android/app/build/outputs/apk/debug/app-debug.apk  # مكان الAPK
+      <div className="chat-box">
+        {messages.map((msg, i) => (
+          <div key={i} className={msg.me ? 'msg-me' : 'msg-other'}>
+            {msg.text}
+          </div>
+        ))}
+      </div>
+
+      <div className="input-area">
+        <input 
+          value={input} 
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="اكتب رسالتك..."
+          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+        />
+        <button onClick={sendMessage}>ارسال</button>
+      </div>
+    </div>
+  )
+}
+
+export default App
