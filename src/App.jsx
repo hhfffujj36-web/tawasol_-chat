@@ -11,7 +11,7 @@ export default function App() {
   }
 
   return (
-    <div style={{padding: '20px', background: '#0f172a', color: 'white', minHeight: '100vh'}}>
+    <div style={{padding: '24px', background: '#0f172a', color: 'white', minHeight: '100vh'}}>
       <h1>💬 Tawasal</h1>
       <div>
         {messages.map((msg, i) => <p key={i} style={{background:'#334155', padding:'10px', borderRadius:'10px'}}>{msg}</p>)}
