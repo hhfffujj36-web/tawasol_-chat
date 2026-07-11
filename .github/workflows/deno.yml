@@ -1,42 +1,175 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+import { useState, useEffect, useRef } from 'react'
+import { initializeApp } from 'firebase/app'
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp
+} from 'firebase/firestore'
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
-# This workflow will install Deno then run `deno lint` and `deno test`.
-# For more information see: https://github.com/denoland/setup-deno
+// ضع بياناتك من Firebase هنا
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
 
-name: Deno
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-on:
-  push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
+export default function App() {
+  const [messages, setMessages] = useState([])
+  const [input, setInput] = useState('')
+  const [image, setImage] = useState(null) // File object
+  const [imagePreview, setImagePreview] = useState(null) // preview URL
+  const [uploading, setUploading] = useState(false)
+  const [name] = useState('ضيف_' + Math.floor(Math.random() * 9999))
+  const endRef = useRef(null)
+  const fileInputRef = useRef(null)
 
-permissions:
-  contents: read
+  useEffect(() => {
+    const q = query(collection(db, "tawasol_public"), orderBy("createdAt"))
+    const unsub = onSnapshot(q, (snapshot) => {
+      setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+    })
+    return () => unsub()
+  }, [])
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
 
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
+  // cleanup preview URL when image changes/unmount
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview)
+    }
+  }, [imagePreview])
 
-      - name: Setup Deno
-        # uses: denoland/setup-deno@v1
-        uses: denoland/setup-deno@61fe2df320078202e33d7d5ad347e7dcfa0e8f31  # v1.1.2
-        with:
-          deno-version: v1.x
+  function handleFileChange(e) {
+    const file = e.target.files?.[0] || null
+    if (file) {
+      // يمكنك التحقق من نوع الملف وحجمه هنا
+      setImage(file)
+      const url = URL.createObjectURL(file)
+      setImagePreview(url)
+    } else {
+      setImage(null)
+      setImagePreview(null)
+    }
+  }
 
-      # Uncomment this step to verify the use of 'deno fmt' on each commit.
-      # - name: Verify formatting
-      #   run: deno fmt --check
+  async function sendMessage() {
+    if (input.trim() === '' && !image) return
+    setUploading(true)
 
-      - name: Run linter
-        run: deno lint
+    try {
+      let imageUrl = ''
+      if (image) {
+        // ضع اسمًا فريدًا للصورة في المسار
+        const imageRef = ref(storage, `tawasol_public_images/${Date.now()}_${image.name}`)
+        // رفع الملف
+        await uploadBytes(imageRef, image)
+        // الحصول على URL قابل للتشارك
+        imageUrl = await getDownloadURL(imageRef)
+      }
 
-      - name: Run tests
-        run: deno test -A
+      // حفظ الوثيقة في Firestore
+      await addDoc(collection(db, "tawasol_public"), {
+        name,
+        text: input.trim() || '',
+        imageUrl: imageUrl || '',
+        createdAt: serverTimestamp()
+      })
+
+      // مسح الحقول بعد الإرسال
+      setInput('')
+      setImage(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview)
+        setImagePreview(null)
+      }
+    } catch (err) {
+      console.error("خطأ أثناء الإرسال:", err)
+      // يمكنك عرض رسالة خطأ للمستخدم هنا
+      alert("فشل الإرسال. تأكد من إعداد Firebase وإذن الكتابة.")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function removeImage() {
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    setImage(null)
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview)
+      setImagePreview(null)
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 700, margin: '0 auto', padding: 16 }}>
+      <h2>غرفة تواصل بسيطة</h2>
+
+      <div style={{
+        border: '1px solid #ddd',
+        padding: 12,
+        height: 400,
+        overflowY: 'auto',
+        marginBottom: 12,
+        borderRadius: 6,
+        background: '#fafafa'
+      }}>
+        {messages.map(msg => (
+          <div key={msg.id} style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 12, color: '#666' }}>{msg.name} · {msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleString() : ''}</div>
+            <div style={{ marginTop: 4 }}>{msg.text}</div>
+            {msg.imageUrl && (
+              <img src={msg.imageUrl} alt="img" style={{ maxWidth: '100%', marginTop: 8, borderRadius: 6 }} />
+            )}
+          </div>
+        ))}
+        <div ref={endRef} />
+      </div>
+
+      {imagePreview && (
+        <div style={{ marginBottom: 8 }}>
+          <div>معاينة الصورة:</div>
+          <img src={imagePreview} alt="preview" style={{ maxWidth: 200, display: 'block', marginTop: 6 }} />
+          <button onClick={removeImage} style={{ marginTop: 6 }}>إزالة الصورة</button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          type="text"
+          placeholder="اكتب رسالة..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          style={{ flex: 1, padding: 8 }}
+          onKeyDown={(e) => { if (e.key === 'Enter') sendMessage() }}
+          disabled={uploading}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          disabled={uploading}
+        />
+        <button onClick={sendMessage} disabled={uploading}>
+          {uploading ? 'جارٍ الإرسال...' : 'إرسال'}
+        </button>
+      </div>
+    </div>
+  )
+}
